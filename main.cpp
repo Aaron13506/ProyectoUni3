@@ -18,15 +18,15 @@ struct adventurer {
     char name[120]{};
     atribute atributes[120];
 
-    void printInfo() const {
+    void printInfo() {
         cout << "Puntaje: " << atributes[0].value << endl;
         cout << "Clase: " << clase << endl;
         cout << "Faccion: " << faction << endl;
         cout << "Nombre: " << name << endl;
         cout << "ATRIB" << endl;
-        for (const auto &atr: atributes) {
-            if (atr.name[0] != '\0' && !(atr.name[0] == 'A' && atr.name[1] == 'D' && atr.name[2] == 'N')) {
-                cout << "  " << atr.name << ":" << atr.value << endl;
+        for (const auto &[name, value]: atributes) {
+            if (name[0] != '\0' && !(name[0] == 'A' && name[1] == 'D' && name[2] == 'N')) {
+                cout << "  " << name << ":" << value << endl;
             }
         }
     }
@@ -35,8 +35,17 @@ struct adventurer {
 void removeSpaces(char *str) {
     int count = 0;
     for (int i = 0; str[i]; i++) {
-        cout << str << endl;
         if (str[i] != ' ') {
+            str[count++] = str[i];
+        }
+    }
+    str[count] = '\0';
+}
+
+void takePath(char *str) {
+    int count = 0;
+    for (int i = 6; str[i]; i++) {
+        if (str[i] != '\"' || str[i] != '\'') {
             str[count++] = str[i];
         }
     }
@@ -191,14 +200,22 @@ void loadAdventurer(adventurer *adv, const char *directory, const char *filename
         adv->atributes[0].name[0] = 'A';
         adv->atributes[0].name[1] = 'D';
         adv->atributes[0].name[2] = 'N';
+        adv->atributes[0].name[3] = '\0';
         adv->atributes[0].value = ADN;
     }
     fileIn.close();
 }
 
+char toLower(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return c + ('a' - 'A');
+    }
+    return c;
+}
+
 bool compareString(char *str1, char *str2) {
     for (int i = 0; str1[i] != '\0'; i++) {
-        if (str1[i] != str2[i]) {
+        if (toLower(str1[i]) != toLower(str2[i])) {
             return false;
         }
     }
@@ -212,18 +229,18 @@ bool compareSimilarityString(char *findOption, char *comparer, int findSize) {
         if (comparer[j] == '\0') {
             return false;
         }
-        cout << findOption[i] << "[" << i << "]" << "-" << comparer[j] << "[" << j << "]" << endl;
-        if (findOption[i] == comparer[j]) {
+        if (toLower(findOption[i]) == toLower(comparer[j])) {
             count++;
+            if (count == findSize) {
+                return true;
+            }
         } else {
-            i = -1;
             count = 0;
-        }
-        if (count == findSize) {
-            return true;
+            i = -1;
+            j++;
+            continue;
         }
         j++;
-        cout << i << endl;
     }
     return false;
 }
@@ -236,8 +253,16 @@ public:
     int opsQty{0};
     int callCount = 0;
     char finalOption[8] = "INICIAR";
+    bool adventuresLoaded = false;
 
     void load(char *directory) {
+        if (adventuresLoaded) {
+            for (int i = 0; i < advQty; i++) {
+                delete adventurers[i];
+            }
+            delete[] adventurers;
+        }
+        takePath(directory);
         normalizePath(directory);
         char *dirPtr = directory;
         advQty = countFiles(dirPtr);
@@ -254,14 +279,16 @@ public:
         }
         file.close();
         remove(tempFile);
+        adventuresLoaded = true;
     }
 
-    void find(char *&findOption) {
+    void find(char *findOption) {
         int copyQty = advQty;
         int length = 0;
         int index = 0;
         char advOption[20];
         char findParam[120];
+        int elementsRemoved = 0;
 
         adventurersCopy = new adventurer *[advQty];
         for (int i = 0; i < advQty; i++) {
@@ -291,81 +318,181 @@ public:
             char option1[] = "clase";
             char option2[] = "faccion";
             char option3[] = "nombre";
-            if (!compareString(advOptionPtr, option1)) {
-                if (!compareString(advOptionPtr, option2)) {
-                    if (compareString(advOptionPtr, option3)) {
-                        for (int h = 0; h < copyQty; h++) {
-                            if (!compareSimilarityString(findOptionPtr, adventurersCopy[h]->name, length)) {
-                                delete adventurersCopy[h];
-                                adventurersCopy[h] = nullptr;
-                                copyQty--;
-                            }
+            int optionNumber = 0;
+            if (compareString(advOptionPtr, option1)) {
+                optionNumber = 1;
+            } else if (compareString(advOptionPtr, option2)) {
+                optionNumber = 2;
+            } else if (compareString(advOptionPtr, option3)) {
+                optionNumber = 3;
+            }
+
+            switch (optionNumber) {
+                case 1:
+                    for (int h = 0; h < copyQty; h++) {
+                        if (!compareSimilarityString(findOptionPtr, adventurersCopy[h]->clase, length)) {
+                            delete adventurersCopy[h];
+                            adventurersCopy[h] = nullptr;
+                            elementsRemoved++;
                         }
                     }
-                } else {
-                    cout << "Faccion" << endl;
+                    break;
+                case 2:
                     for (int h = 0; h < copyQty; h++) {
                         if (!compareSimilarityString(findOptionPtr, adventurersCopy[h]->faction, length)) {
                             delete adventurersCopy[h];
                             adventurersCopy[h] = nullptr;
-                            copyQty--;
+                            elementsRemoved++;
                         }
                     }
-                }
-            } else {
-                cout << "Clase" << endl;
-                for (int h = 0; h < copyQty; h++) {
-                    if (!compareSimilarityString(findOptionPtr, adventurersCopy[h]->clase, length)) {
-                        delete adventurersCopy[h];
-                        adventurersCopy[h] = nullptr;
-                        copyQty--;
+                    break;
+                case 3:
+                    for (int h = 0; h < copyQty; h++) {
+                        if (!compareSimilarityString(findOptionPtr, adventurersCopy[h]->name, length)) {
+                            delete adventurersCopy[h];
+                            adventurersCopy[h] = nullptr;
+                            elementsRemoved++;
+                        }
                     }
-                }
+                    break;
+                default:
+                    break;
             }
 
             int newIndex = 0;
-            for (int h = 0; h < advQty; h++) {
+            for (int h = 0; h < copyQty; h++) {
                 if (adventurersCopy[h] != nullptr) {
                     adventurersCopy[newIndex++] = adventurersCopy[h];
                 }
             }
+            copyQty -= elementsRemoved;
             cin >> findOption;
+            removeSpaces(findOption);
         }
 
         for (int h = 0; h < copyQty; h++) {
             cout << "#" << h + 1 << endl;
             adventurersCopy[h]->printInfo();
         }
+        for (int i = 0; i < copyQty; i++) {
+            delete adventurersCopy[i];
+        }
+        delete[] adventurersCopy;
         opsQty++;
     };
 
-    void sort(char *&sortOption) {
+    void sort(char *sortOption) {
         opsQty++;
-        char atr[120];
-        char symbol = '\0';
+        char atr[105][120];
+        char symbol[105];
         int index = 0;
-        int attrIndex = 0;
-        bool isSymbol = false;
-
-        while (sortOption[index] != '\0') {
-            if (sortOption[index] == '<' || sortOption[index] == '>') {
-                symbol = sortOption[index];
-                isSymbol = true;
-            } else if (!isSymbol) {
-                atr[attrIndex++] = sortOption[index];
-            }
-            index++;
+        int atrIndex = 0;
+        int atributeIndex = 0;
+        int elementsRemoved = 0;
+        adventurersCopy = new adventurer *[advQty];
+        for (int i = 0; i < advQty; i++) {
+            adventurersCopy[i] = new adventurer(*adventurers[i]);
         }
-        atr[attrIndex] = '\0';
+        for (int i = 0; i < advQty; i++) {
+            delete adventurers[i];
+        }
+        delete[] adventurers;
+
+        while (!(compareString(sortOption, finalOption))) {
+            bool isSymbol = false;
+            while (sortOption[index] != '\0') {
+                if (sortOption[index] == '<' || sortOption[index] == '>') {
+                    symbol[atributeIndex] = sortOption[index];
+                    isSymbol = true;
+                } else if (!isSymbol) {
+                    atr[atributeIndex][atrIndex] = sortOption[index];
+                }
+                index++;
+            }
+            atr[atributeIndex][atrIndex] = '\0';
+            atributeIndex++;
+            index = 0;
+            atrIndex = 0;
+            cin >> sortOption;
+            removeSpaces(sortOption);
+        }
+        for (int i = 0; i < advQty; i++) {
+            bool haveAttribute = false;
+            for (int j = 0; j < atributeIndex; j++) {
+                for (int k = 0; k < 100; k++) {
+                    if (compareString(atr[j], adventurersCopy[i]->atributes[k].name)) {
+                        haveAttribute = true;
+                        break;
+                    }
+                }
+                if (haveAttribute) {
+                    break;
+                }
+            }
+            if (!haveAttribute) {
+                delete adventurersCopy[i];
+                adventurersCopy[i] = nullptr;
+                elementsRemoved++;
+            }
+        }
+        int newIndex = 0;
+        for (int i = 0; i < advQty; i++) {
+            if (adventurersCopy[i] != nullptr) {
+                adventurersCopy[newIndex++] = adventurersCopy[i];
+            }
+        }
+
+        advQty = newIndex;
+
+        adventurers = new adventurer *[advQty];
+        for (int i = 0; i < advQty; i++) {
+            adventurers[i] = new adventurer(*adventurersCopy[i]);
+        }
+        for (int i = 0; i < advQty; i++) {
+            delete adventurersCopy[i];
+        }
+        delete[] adventurersCopy;
+
+
+        for (int i = 0; i < atributeIndex; i++) {
+            if (!(symbol[i] == '<' || symbol[i] == '>')) {
+                continue;
+            }
+            for (int j = 0; j < advQty; j++) {
+                for (int k = 0; k < advQty - 1; k++) {
+                    int atributeIndex1 = -1, atributeIndex2 = -1;
+                    for (int l = 0; l < 100; l++) {
+                        if (compareString(atr[i], adventurers[k]->atributes[l].name)) {
+                            atributeIndex1 = l;
+                        }
+                        if (compareString(atr[i], adventurers[k + 1]->atributes[l].name)) {
+                            atributeIndex2 = l;
+                        }
+                    }
+                    if (atributeIndex1 == -1 || atributeIndex2 == -1) {
+                        continue;
+                    }
+                    if ((symbol[i] == '<' && adventurers[k]->atributes[atributeIndex1].value > adventurers[k + 1]->
+                         atributes[atributeIndex2].value) ||
+                        (symbol[i] == '>' && adventurers[k]->atributes[atributeIndex1].value < adventurers[k + 1]->
+                         atributes[atributeIndex2].value)) {
+                        adventurer *temp = adventurers[k];
+                        adventurers[k] = adventurers[k + 1];
+                        adventurers[k + 1] = temp;
+                    }
+                }
+            }
+        }
     }
 
-    void select(char *&selectOption) {
+    void select(char *selectOption) {
         atribute temp;
         int index = 0;
         int value = 0;
         int copyQty = advQty;
         char option = '\0';
         bool isPuntuation = false;
+        int elementsRemoved = 0;
         adventurersCopy = new adventurer *[advQty];
         for (int i = 0; i < advQty; i++) {
             adventurersCopy[i] = new adventurer(*adventurers[i]);
@@ -387,6 +514,7 @@ public:
                 }
                 index++;
             }
+            temp.name[index] = '\0'; // Asegurarse de que el nombre termine con '\0'
             temp.value = value;
             index = 0;
             value = 0;
@@ -405,12 +533,11 @@ public:
                     adventurersCopy[i] = nullptr;
                     copyQty--;
                 }
-            } {
-                int newIndex = 0;
-                for (int h = 0; h < advQty; h++) {
-                    if (adventurersCopy[h] != nullptr) {
-                        adventurersCopy[newIndex++] = adventurersCopy[h];
-                    }
+            }
+            int newIndex = 0;
+            for (int h = 0; h < advQty; h++) {
+                if (adventurersCopy[h] != nullptr) {
+                    adventurersCopy[newIndex++] = adventurersCopy[h];
                 }
             }
 
@@ -419,11 +546,10 @@ public:
                     case '<':
                         for (int i = 0; i < copyQty; i++) {
                             for (auto &[name, value]: adventurersCopy[i]->atributes) {
-                                if (name[0] != '\0' && compareString(name, temp.name) && value < temp.
-                                    value) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value < temp.value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
-                                    copyQty--;
+                                    elementsRemoved++;
                                     break;
                                 }
                             }
@@ -432,11 +558,10 @@ public:
                     case '>':
                         for (int i = 0; i < copyQty; i++) {
                             for (auto &[name, value]: adventurersCopy[i]->atributes) {
-                                if (name[0] != '\0' && compareString(name, temp.name) && value > temp.
-                                    value) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value > temp.value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
-                                    copyQty--;
+                                    elementsRemoved++;
                                     break;
                                 }
                             }
@@ -445,11 +570,10 @@ public:
                     case '=':
                         for (int i = 0; i < copyQty; i++) {
                             for (auto &[name, value]: adventurersCopy[i]->atributes) {
-                                if (name[0] != '\0' && compareString(name, temp.name) && value != temp.
-                                    value) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value != temp.value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
-                                    copyQty--;
+                                    elementsRemoved++;
                                     break;
                                 }
                             }
@@ -458,11 +582,10 @@ public:
                     case '#':
                         for (int i = 0; i < copyQty; i++) {
                             for (auto &[name, value]: adventurersCopy[i]->atributes) {
-                                if (name[0] != '\0' && compareString(name, temp.name) && value == temp.
-                                    value) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value == temp.value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
-                                    copyQty--;
+                                    elementsRemoved++;
                                     break;
                                 }
                             }
@@ -470,17 +593,17 @@ public:
                         break;
                     default: break;
                 }
-            } {
-                int newIndex = 0;
-                for (int h = 0; h < advQty; h++) {
-                    if (adventurersCopy[h] != nullptr) {
-                        adventurersCopy[newIndex++] = adventurersCopy[h];
-                    }
+            }
+            newIndex = 0;
+            for (int h = 0; h < advQty; h++) {
+                if (adventurersCopy[h] != nullptr) {
+                    adventurersCopy[newIndex++] = adventurersCopy[h];
                 }
             }
+            copyQty -= elementsRemoved;
             cin >> selectOption;
+            removeSpaces(selectOption);
         }
-        cout << copyQty << endl;
         adventurers = new adventurer *[copyQty];
         for (int i = 0; i < copyQty; i++) {
             adventurers[i] = new adventurer(*adventurersCopy[i]);
@@ -491,9 +614,14 @@ public:
         delete[] adventurersCopy;
         advQty = copyQty;
         opsQty++;
+        cout << "Operacion realizada" << endl;
+        for (int i = 0; i < advQty; i++) {
+            adventurers[i]->printInfo();
+        }
     }
 
     void print() {
+        cout << "operaciones realizadas: " << opsQty << endl;
         callCount++;
         char fileName[50];
         snprintf(fileName, sizeof(fileName), "Operaciones%d.out", callCount);
@@ -510,7 +638,7 @@ public:
             fileOut << "Atributos" << endl;
             for (const auto &[name, value]: adventurers[i]->atributes) {
                 if (name[0] != '\0' && !(name[0] == 'A' && name[1] == 'D' && name[2] == 'N')) {
-                    fileOut << "  " << name << ":" << value << endl;
+                    fileOut << name << ":" << value << endl;
                 }
             }
         }
@@ -524,35 +652,61 @@ int main() {
     char findOption[200];
     char selectOption[200];
     char sortOption[200];
-    cout << "Ingrese la ruta del directorio: ";
-    cin.getline(directory, 150);
-    guild.load(directory);
-    for (int i = 0; i < guild.advQty; i++) {
-        guild.adventurers[i]->printInfo();
-    }
+    char load[] = "CARGAR";
+    char find[] = "BUSCAR";
+    char sort[] = "ORDENAR";
+    char select[] = "SELECCIONAR";
+    char print[] = "IMPRIMIR";
+    int actualOption = 0;
+    while (true) {
+        char option[120];
+        cin.getline(option, 120);
+        removeSpaces(option);
+        for (int i = 0; i < 6; i++) {
+            bool isOption = true;
+            if (option[i] != load[i]) {
+                isOption = false;
+            }
+            if (isOption) {
+                actualOption = 1;
+            }
+        }
+        if (compareString(option, find)) {
+            actualOption = 2;
+        } else if (compareString(option, sort)) {
+            actualOption = 3;
+        } else if (compareString(option, select)) {
+            actualOption = 4;
+        } else if (compareString(option, print)) {
+            actualOption = 5;
+        }
 
-    // cout << "Ingrese el nombre del aventurero a buscar: ";
-    // cin >> findOption;
-    // removeSpaces(findOption);
-    // char *findPtr = findOption;
-    // adventurers.find(findPtr);
-
-    // cout << "Ingrese el dato del aventurero a seleccionar: ";
-    // cin.getline(selectOption, 150);
-    // removeSpaces(selectOption);
-    // cout << "SelectOption: ";
-    // cout << selectOption << endl;
-    // char *selectPtr = selectOption;
-    // guild.select(selectPtr);
-    cout << "Ingrese el dato del aventurero a ordenar: ";
-    cin.getline(sortOption, 150);
-    removeSpaces(sortOption);
-    char *sortPtr = sortOption;
-    guild.sort(sortPtr);
-    for (int i = 0; i < guild.advQty; i++) {
-        cout << "Aventurero #" << i + 1 << endl;
-        guild.adventurers[i]->printInfo();
+        switch (actualOption) {
+            case 1:
+                guild.load(option);
+                for (int i = 0; i < guild.advQty; i++) {
+                    guild.adventurers[i]->printInfo();
+                }
+                break;
+            case 2:
+                cin.getline(option, 120);
+                removeSpaces(option);
+                guild.find(option);
+                break;
+            case 3:
+                cin.getline(option, 120);
+                removeSpaces(option);
+                guild.sort(option);
+                break;
+            case 4:
+                cin.getline(option, 120);
+                removeSpaces(option);
+                guild.select(option);
+                break;
+            case 5:
+                guild.print();
+                break;
+            default: break;
+        }
     }
-    guild.print();
-    return 0;
 }
