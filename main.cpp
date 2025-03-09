@@ -16,17 +16,16 @@ struct adventurer {
     char clase[120]{};
     char faction[120]{};
     char name[120]{};
-    int puntuation{};
     atribute atributes[120];
 
     void printInfo() const {
-        cout << "Puntaje: " << puntuation << endl;
+        cout << "Puntaje: " << atributes[0].value << endl;
         cout << "Clase: " << clase << endl;
         cout << "Faccion: " << faction << endl;
         cout << "Nombre: " << name << endl;
         cout << "ATRIB" << endl;
         for (const auto &atr: atributes) {
-            if (atr.name[0] != '\0') {
+            if (atr.name[0] != '\0' && !(atr.name[0] == 'A' && atr.name[1] == 'D' && atr.name[2] == 'N')) {
                 cout << "  " << atr.name << ":" << atr.value << endl;
             }
         }
@@ -136,7 +135,7 @@ void loadData(adventurer *adv, char *data, int currentLine, bool *readingADN, bo
                 *readingADN = true;
             }
             if (!*readingADN) {
-                int i = currentLine - 4;
+                int i = currentLine - 3;
                 for (int j = 0; data[j] != '\0'; j++) {
                     if (data[j] != ':' && !*isPuntuation) {
                         adv->atributes[i].name[j] = data[j];
@@ -189,7 +188,10 @@ void loadAdventurer(adventurer *adv, const char *directory, const char *filename
     }
     if (arrN != nullptr) {
         int ADN = calculateADN(arrN, size);
-        adv->puntuation = ADN;
+        adv->atributes[0].name[0] = 'A';
+        adv->atributes[0].name[1] = 'D';
+        adv->atributes[0].name[2] = 'N';
+        adv->atributes[0].value = ADN;
     }
     fileIn.close();
 }
@@ -232,7 +234,7 @@ public:
     adventurer **adventurersCopy{};
     int advQty{};
     int opsQty{0};
-    int callCount = 1;
+    int callCount = 0;
     char finalOption[8] = "INICIAR";
 
     void load(char *directory) {
@@ -266,7 +268,7 @@ public:
             adventurersCopy[i] = new adventurer(*adventurers[i]);
         }
         while (!compareString(findOption, finalOption)) {
-            while (findOption[index] != ':') {
+            while (findOption[index] != '\'') {
                 advOption[index] = findOption[index];
                 index++;
             }
@@ -274,6 +276,10 @@ public:
             int j = index + 1;
             index = 0;
             while (findOption[j] != '\0') {
+                if (findOption[j] == '\'') {
+                    j++;
+                    continue;
+                }
                 findParam[index] = findOption[j];
                 j++;
                 index++;
@@ -331,11 +337,26 @@ public:
             adventurersCopy[h]->printInfo();
         }
         opsQty++;
-    }
+    };
 
-    void sort() {
-        atribute temp[110];
+    void sort(char *&sortOption) {
         opsQty++;
+        char atr[120];
+        char symbol = '\0';
+        int index = 0;
+        int attrIndex = 0;
+        bool isSymbol = false;
+
+        while (sortOption[index] != '\0') {
+            if (sortOption[index] == '<' || sortOption[index] == '>') {
+                symbol = sortOption[index];
+                isSymbol = true;
+            } else if (!isSymbol) {
+                atr[attrIndex++] = sortOption[index];
+            }
+            index++;
+        }
+        atr[attrIndex] = '\0';
     }
 
     void select(char *&selectOption) {
@@ -373,8 +394,8 @@ public:
 
             for (int i = 0; i < copyQty; i++) {
                 bool haveAtribute = false;
-                for (auto &atr: adventurersCopy[i]->atributes) {
-                    if (atr.name[0] != '\0' && compareString(atr.name, temp.name)) {
+                for (auto &[name, value]: adventurersCopy[i]->atributes) {
+                    if (name[0] != '\0' && compareString(name, temp.name)) {
                         haveAtribute = true;
                         break;
                     }
@@ -397,8 +418,8 @@ public:
                 switch (option) {
                     case '<':
                         for (int i = 0; i < copyQty; i++) {
-                            for (auto &atr: adventurersCopy[i]->atributes) {
-                                if (atr.name[0] != '\0' && compareString(atr.name, temp.name) && atr.value < temp.
+                            for (auto &[name, value]: adventurersCopy[i]->atributes) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value < temp.
                                     value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
@@ -410,8 +431,8 @@ public:
                         break;
                     case '>':
                         for (int i = 0; i < copyQty; i++) {
-                            for (auto &atr: adventurersCopy[i]->atributes) {
-                                if (atr.name[0] != '\0' && compareString(atr.name, temp.name) && atr.value > temp.
+                            for (auto &[name, value]: adventurersCopy[i]->atributes) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value > temp.
                                     value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
@@ -423,8 +444,8 @@ public:
                         break;
                     case '=':
                         for (int i = 0; i < copyQty; i++) {
-                            for (auto &atr: adventurersCopy[i]->atributes) {
-                                if (atr.name[0] != '\0' && compareString(atr.name, temp.name) && atr.value != temp.
+                            for (auto &[name, value]: adventurersCopy[i]->atributes) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value != temp.
                                     value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
@@ -436,8 +457,8 @@ public:
                         break;
                     case '#':
                         for (int i = 0; i < copyQty; i++) {
-                            for (auto &atr: adventurersCopy[i]->atributes) {
-                                if (atr.name[0] != '\0' && compareString(atr.name, temp.name) && atr.value == temp.
+                            for (auto &[name, value]: adventurersCopy[i]->atributes) {
+                                if (name[0] != '\0' && compareString(name, temp.name) && value == temp.
                                     value) {
                                     delete adventurersCopy[i];
                                     adventurersCopy[i] = nullptr;
@@ -473,15 +494,27 @@ public:
     }
 
     void print() {
+        callCount++;
         char fileName[50];
         snprintf(fileName, sizeof(fileName), "Operaciones%d.out", callCount);
-
         ofstream fileOut(fileName);
+        fileOut << "operaciones realizadas: " << opsQty << endl;
+        fileOut << "Aventureros encontrados: " << advQty << endl;
+        fileOut << "Lista de aventureros:" << endl;
         for (int i = 0; i < advQty; i++) {
-            fileOut << "Puntaje: " << adventurers[i]->puntuation << endl;
+            fileOut << "#" << i + 1 << endl;
+            fileOut << "Puntaje: " << adventurers[i]->atributes[0].value << endl;
+            fileOut << "Clase: " << adventurers[i]->clase << endl;
+            fileOut << "Faccion: " << adventurers[i]->faction << endl;
+            fileOut << "Nombre: " << adventurers[i]->name << endl;
+            fileOut << "Atributos" << endl;
+            for (const auto &[name, value]: adventurers[i]->atributes) {
+                if (name[0] != '\0' && !(name[0] == 'A' && name[1] == 'D' && name[2] == 'N')) {
+                    fileOut << "  " << name << ":" << value << endl;
+                }
+            }
         }
         fileOut.close();
-        callCount++;
     }
 };
 
@@ -490,6 +523,7 @@ int main() {
     char directory[200];
     char findOption[200];
     char selectOption[200];
+    char sortOption[200];
     cout << "Ingrese la ruta del directorio: ";
     cin.getline(directory, 150);
     guild.load(directory);
@@ -503,16 +537,22 @@ int main() {
     // char *findPtr = findOption;
     // adventurers.find(findPtr);
 
-    cout << "Ingrese el dato del aventurero a seleccionar: ";
-    cin.getline(selectOption, 150);
-    removeSpaces(selectOption);
-    cout << "SelectOption: ";
-    cout << selectOption << endl;
-    char *selectPtr = selectOption;
-    guild.select(selectPtr);
+    // cout << "Ingrese el dato del aventurero a seleccionar: ";
+    // cin.getline(selectOption, 150);
+    // removeSpaces(selectOption);
+    // cout << "SelectOption: ";
+    // cout << selectOption << endl;
+    // char *selectPtr = selectOption;
+    // guild.select(selectPtr);
+    cout << "Ingrese el dato del aventurero a ordenar: ";
+    cin.getline(sortOption, 150);
+    removeSpaces(sortOption);
+    char *sortPtr = sortOption;
+    guild.sort(sortPtr);
     for (int i = 0; i < guild.advQty; i++) {
         cout << "Aventurero #" << i + 1 << endl;
         guild.adventurers[i]->printInfo();
     }
+    guild.print();
     return 0;
 }
