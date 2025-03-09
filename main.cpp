@@ -32,6 +32,11 @@ struct adventurer {
     }
 };
 
+void clearInputBuffer() {
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+}
+
 void removeSpaces(char *str) {
     int count = 0;
     for (int i = 0; str[i]; i++) {
@@ -45,7 +50,7 @@ void removeSpaces(char *str) {
 void takePath(char *str) {
     int count = 0;
     for (int i = 6; str[i]; i++) {
-        if (str[i] != '\"' || str[i] != '\'') {
+        if (str[i] != '\"' && str[i] != '\'') {
             str[count++] = str[i];
         }
     }
@@ -250,19 +255,21 @@ public:
     adventurer **adventurers{};
     adventurer **adventurersCopy{};
     int advQty{};
-    int opsQty{0};
+    int opsQty = 0;
     int callCount = 0;
     char finalOption[8] = "INICIAR";
-    bool adventuresLoaded = false;
+    bool adventurersLoaded = false;
 
     void load(char *directory) {
-        if (adventuresLoaded) {
+        if (adventurersLoaded) {
             for (int i = 0; i < advQty; i++) {
                 delete adventurers[i];
             }
             delete[] adventurers;
         }
+        cout << directory << endl;
         takePath(directory);
+        cout << directory << endl;
         normalizePath(directory);
         char *dirPtr = directory;
         advQty = countFiles(dirPtr);
@@ -279,10 +286,11 @@ public:
         }
         file.close();
         remove(tempFile);
-        adventuresLoaded = true;
+        adventurersLoaded = true;
     }
 
     void find(char *findOption) {
+        opsQty++;
         int copyQty = advQty;
         int length = 0;
         int index = 0;
@@ -294,7 +302,7 @@ public:
         for (int i = 0; i < advQty; i++) {
             adventurersCopy[i] = new adventurer(*adventurers[i]);
         }
-        while (!compareString(findOption, finalOption)) {
+        while (true) {
             while (findOption[index] != '\'') {
                 advOption[index] = findOption[index];
                 index++;
@@ -368,6 +376,9 @@ public:
             copyQty -= elementsRemoved;
             cin >> findOption;
             removeSpaces(findOption);
+            if (compareString(findOption, finalOption)) {
+                break;
+            }
         }
 
         for (int h = 0; h < copyQty; h++) {
@@ -378,7 +389,6 @@ public:
             delete adventurersCopy[i];
         }
         delete[] adventurersCopy;
-        opsQty++;
     };
 
     void sort(char *sortOption) {
@@ -398,7 +408,7 @@ public:
         }
         delete[] adventurers;
 
-        while (!(compareString(sortOption, finalOption))) {
+        while (true) {
             bool isSymbol = false;
             while (sortOption[index] != '\0') {
                 if (sortOption[index] == '<' || sortOption[index] == '>') {
@@ -415,6 +425,9 @@ public:
             atrIndex = 0;
             cin >> sortOption;
             removeSpaces(sortOption);
+            if (compareString(sortOption, finalOption)) {
+                break;
+            }
         }
         for (int i = 0; i < advQty; i++) {
             bool haveAttribute = false;
@@ -452,7 +465,6 @@ public:
             delete adventurersCopy[i];
         }
         delete[] adventurersCopy;
-
 
         for (int i = 0; i < atributeIndex; i++) {
             if (!(symbol[i] == '<' || symbol[i] == '>')) {
@@ -501,7 +513,7 @@ public:
             delete adventurers[i];
         }
         delete[] adventurers;
-        while (!compareString(selectOption, finalOption)) {
+        while (true) {
             while (selectOption[index] != '\0') {
                 if (isPuntuation) {
                     value = value * 10 + (selectOption[index] - '0');
@@ -603,16 +615,20 @@ public:
             copyQty -= elementsRemoved;
             cin >> selectOption;
             removeSpaces(selectOption);
+            if (compareString(selectOption, finalOption)) {
+                break;
+            }
         }
+
+        advQty = copyQty;
         adventurers = new adventurer *[copyQty];
-        for (int i = 0; i < copyQty; i++) {
+        for (int i = 0; i < advQty; i++) {
             adventurers[i] = new adventurer(*adventurersCopy[i]);
         }
-        for (int i = 0; i < copyQty; i++) {
+        for (int i = 0; i < advQty; i++) {
             delete adventurersCopy[i];
         }
         delete[] adventurersCopy;
-        advQty = copyQty;
         opsQty++;
         cout << "Operacion realizada" << endl;
         for (int i = 0; i < advQty; i++) {
@@ -652,24 +668,20 @@ int main() {
     char findOption[200];
     char selectOption[200];
     char sortOption[200];
+    char lOption[200];
     char load[] = "CARGAR";
     char find[] = "BUSCAR";
     char sort[] = "ORDENAR";
     char select[] = "SELECCIONAR";
     char print[] = "IMPRIMIR";
     int actualOption = 0;
+
     while (true) {
         char option[120];
         cin.getline(option, 120);
         removeSpaces(option);
-        for (int i = 0; i < 6; i++) {
-            bool isOption = true;
-            if (option[i] != load[i]) {
-                isOption = false;
-            }
-            if (isOption) {
-                actualOption = 1;
-            }
+        if (compareSimilarityString(option, load, 6)) {
+            actualOption = 1;
         }
         if (compareString(option, find)) {
             actualOption = 2;
@@ -680,33 +692,48 @@ int main() {
         } else if (compareString(option, print)) {
             actualOption = 5;
         }
+        cout << "actualOption: " << actualOption << endl;
 
         switch (actualOption) {
             case 1:
-                guild.load(option);
+                guild.load(directory);
                 for (int i = 0; i < guild.advQty; i++) {
                     guild.adventurers[i]->printInfo();
                 }
                 break;
             case 2:
-                cin.getline(option, 120);
-                removeSpaces(option);
-                guild.find(option);
+                cout << "Ingrese la opción de búsqueda: ";
+                cin.getline(findOption, 200);
+                removeSpaces(findOption);
+                guild.find(findOption);
+                clearInputBuffer(); // Limpiar el buffer de entrada
                 break;
             case 3:
-                cin.getline(option, 120);
-                removeSpaces(option);
-                guild.sort(option);
+                cout << "Ingrese la opción de ordenamiento: ";
+                cin.getline(sortOption, 200);
+                removeSpaces(sortOption);
+                guild.sort(sortOption);
+                clearInputBuffer(); // Limpiar el buffer de entrada
                 break;
             case 4:
-                cin.getline(option, 120);
-                removeSpaces(option);
-                guild.select(option);
+                cout << "Ingrese la opción de selección: ";
+                cin.getline(selectOption, 200);
+                removeSpaces(selectOption);
+                guild.select(selectOption);
+                clearInputBuffer(); // Limpiar el buffer de entrada
                 break;
             case 5:
+                cout << "IMPRIMIR" << endl;
                 guild.print();
                 break;
-            default: break;
+            default:
+                break;
         }
+
+        for (char &i: option) {
+            i = '\0';
+        }
+        actualOption = 0;
     }
 }
+
